@@ -91,8 +91,9 @@ runtime.execute(source) // Effect<CodeMode.Result, never, ToolServices>
 The Effect environment is inferred from the supplied tools. `hooks` surround every call the program makes into the
 host: `tool.before`/`tool.after` receive `{ name, input }` with decoded input, `extension.before`/`extension.after`
 receive `{ extension, name, args }`. An `after` hook also receives how the call ended (`success` with its value,
-`failure` with its error, or `interrupted`). A failing `before` hook denies the call, and the program catches the
-failure as a thrown error.
+`failure` with its error, or `interrupted`). A `before` hook runs before the call reaches the host, and a failing one
+denies it: the host function is never called, and the program catches the failure as a thrown error. A denied tool
+call or `async` extension function rejects its promise; any other denied extension global throws at the call site.
 
 ### `Extension.make`
 
@@ -104,9 +105,8 @@ const web = Extension.make({ name: "web", globals: { fetch: (url: string) => glo
 const runtime = CodeMode.make({ tools, extensions: [web] })
 ```
 
-A global may return a value, a Promise, or an Effect. An Effect starts only after the `extension.before` hook admits
-the call, and its requirements join the runtime's environment the same way a tool's do, so the host can provide
-per-execution services such as the calling session:
+A global may return a value, a Promise, or an Effect. An Effect's requirements join the runtime's environment the same
+way a tool's do, so the host can provide per-execution services such as the calling session:
 
 ```ts
 const web = Extension.make({
